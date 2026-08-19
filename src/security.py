@@ -54,6 +54,13 @@ def verify_telnyx_signature(
 
 
 def stream_token_matches(header_value: str | None, expected: str) -> bool:
+    """Validate a Telnyx media-stream token from a WebSocket header value.
+
+    Telnyx currently sends ``stream_auth_token`` as the
+    ``x-telnyx-streaming-auth-token`` WebSocket header. Older examples and
+    some proxies may use a Bearer-style Authorization header, so this accepts
+    either raw-token or ``Bearer <token>`` values.
+    """
     if not expected or not header_value:
         return False
     supplied = header_value.strip()
@@ -62,4 +69,3 @@ def stream_token_matches(header_value: str | None, expected: str) -> bool:
     import hmac
 
     return hmac.compare_digest(supplied, expected)
-
