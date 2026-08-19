@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from src.config import Settings
-from src.prompt import build_session_update
+from src.prompt import build_initial_greeting, build_session_update
 from src.security import stream_token_matches, verify_telnyx_signature
 from src.telnyx_api import build_answer_payload
 
@@ -88,6 +88,20 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(session["audio"]["output"]["format"]["type"], "audio/pcmu")
         self.assertEqual(session["audio"]["output"]["voice"], "marin")
         self.assertTrue(session["audio"]["input"]["turn_detection"]["interrupt_response"])
+
+    def test_receptionist_prompt_keeps_dispatch_boundary(self):
+        event = build_session_update("gpt-realtime-2.1", "marin")
+        instructions = event["session"]["instructions"]
+        self.assertIn("Half Price Geeks' AI virtual receptionist", instructions)
+        self.assertIn("Do not claim that you created a ticket", instructions)
+        self.assertIn("not connected to live dispatch tools yet", instructions)
+        self.assertIn("Do not ask for passwords", instructions)
+
+    def test_initial_greeting_is_hpg_receptionist_not_transport_test(self):
+        event = build_initial_greeting()
+        instructions = event["response"]["instructions"]
+        self.assertIn("Thank you for calling Half Price Geeks", instructions)
+        self.assertNotIn("voice-system test", instructions)
 
     def test_settings_builds_wss_media_url(self):
         env = {
