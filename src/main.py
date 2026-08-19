@@ -113,7 +113,10 @@ async def telnyx_webhook(request: Request, background_tasks: BackgroundTasks):
 
 @app.websocket("/telnyx/media")
 async def telnyx_media(websocket: WebSocket) -> None:
-    auth = websocket.headers.get("authorization")
+    auth = (
+        websocket.headers.get("x-telnyx-streaming-auth-token")
+        or websocket.headers.get("authorization")
+    )
     if not stream_token_matches(auth, settings.telnyx_stream_auth_token):
         await websocket.close(code=1008, reason="Unauthorized media stream")
         return
