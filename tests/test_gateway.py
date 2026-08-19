@@ -65,6 +65,10 @@ class GatewayTests(unittest.TestCase):
         self.assertTrue(stream_token_matches("Bearer secret", "secret"))
         self.assertFalse(stream_token_matches("Bearer wrong", "secret"))
 
+    def test_stream_token_accepts_telnyx_streaming_auth_header_value(self):
+        self.assertTrue(stream_token_matches("secret", "secret"))
+        self.assertFalse(stream_token_matches("wrong", "secret"))
+
     def test_answer_payload_enables_pcmu_bidirectional_stream(self):
         payload = build_answer_payload(
             stream_url="wss://voice.example/telnyx/media",
@@ -101,4 +105,3 @@ class GatewayTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
