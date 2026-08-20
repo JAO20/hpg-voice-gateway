@@ -35,6 +35,9 @@ class Settings:
     telnyx_api_key: str
     telnyx_public_key: str
     telnyx_stream_auth_token: str
+    make_dispatch_webhook_url: str
+    make_dispatch_auth_token: str
+    make_dispatch_timeout_seconds: float
 
     @property
     def media_stream_url(self) -> str:
@@ -51,6 +54,12 @@ class Settings:
         return (
             "wss://api.openai.com/v1/realtime?model="
             f"{self.openai_realtime_model}"
+        )
+
+    @property
+    def dispatch_enabled(self) -> bool:
+        return bool(
+            self.make_dispatch_webhook_url and self.make_dispatch_auth_token
         )
 
     def missing_runtime_values(self) -> list[str]:
@@ -84,5 +93,13 @@ class Settings:
             telnyx_stream_auth_token=os.getenv(
                 "TELNYX_STREAM_AUTH_TOKEN", ""
             ).strip(),
+            make_dispatch_webhook_url=_clean_url(
+                os.getenv("MAKE_DISPATCH_WEBHOOK_URL", "")
+            ),
+            make_dispatch_auth_token=os.getenv(
+                "MAKE_DISPATCH_AUTH_TOKEN", ""
+            ).strip(),
+            make_dispatch_timeout_seconds=float(
+                os.getenv("MAKE_DISPATCH_TIMEOUT_SECONDS", "8")
+            ),
         )
-

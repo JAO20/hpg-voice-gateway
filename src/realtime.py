@@ -11,7 +11,13 @@ from fastapi import WebSocket
 from websockets.asyncio.client import ClientConnection, connect
 
 from .config import Settings
+from .dispatch_client import submit_appointment_request
+from .dispatch_contract import (
+    ACTION_NAME,
+    normalize_action_result,
+)
 from .prompt import build_initial_greeting, build_session_update
+from .realtime_tools import build_function_output_events, prepare_appointment_request
 
 logger = logging.getLogger("hpg.voice.realtime")
 
@@ -61,6 +67,7 @@ class RealtimeBridge:
                     build_session_update(
                         self.settings.openai_realtime_model,
                         self.settings.openai_realtime_voice,
+                        dispatch_enabled=self.settings.dispatch_enabled,
                     )
                 )
                 await self._relay_both_directions()
@@ -126,6 +133,8 @@ class RealtimeBridge:
                 await self._send_audio_delta(event.get("delta"))
             elif event_type == "input_audio_buffer.speech_started":
                 await self._handle_interruption()
+            elif event_type == "response.function_call_arguments.done":
+                await self._handle_function_call(event)
             elif event_type == "error":
                 error = event.get("error") or {}
                 logger.error(
@@ -134,6 +143,38 @@ class RealtimeBridge:
                     error.get("type"),
                     error.get("code"),
                 )
+
+    async def _handle_function_call(self, event: dict) -> None:
+        call_id = str(event.get("call_id") or "").strip()
+        if not call_id:
+            logger.warning("Realtime function call missing call_id call_ref=%s", self.call_ref)
+            return
+
+        name = str(event.get("name") or "")
+        if name != ACTION_NAME or not self.settings.dispatch_enabled:
+            result = {
+                "status": "rejected",
+                "reason_code": "tool_unavailable",
+                "accepted": False,
+            }
+        else:
+            prepared = prepare_appointment_request(
+                str(event.get("arguments") or "{}"), self.call_ref
+            )
+            if not prepared["ready"]:
+                result = prepared["result"]
+            else:
+                result = await submit_appointment_request(
+                    self.settings.make_dispatch_webhook_url,
+                    self.settings.make_dispatch_auth_token,
+                    prepared["envelope"],
+                    self.settings.make_dispatch_timeout_seconds,
+                )
+                result = normalize_action_result(result)
+
+        output_event, response_event = build_function_output_events(call_id, result)
+        await self._send_openai(output_event)
+        await self._send_openai(response_event)
 
     async def _send_audio_delta(self, payload: str | None) -> None:
         if not payload:
@@ -181,4 +222,3 @@ class RealtimeBridge:
         if self.openai_ws is None:
             raise RuntimeError("OpenAI Realtime socket is not connected")
         await self.openai_ws.send(json.dumps(event))
-
