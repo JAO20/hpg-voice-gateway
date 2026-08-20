@@ -2,7 +2,9 @@
 
 Phase 1 gateway for Half Price Geeks. It accepts signed Telnyx Voice API
 webhooks, answers inbound test calls with an authenticated bidirectional PCMU
-media stream, and relays that audio to an OpenAI Realtime voice session.
+media stream, and relays that audio to an OpenAI Realtime voice session. An
+off-by-default Phase 3 boundary can expose one caller-approved appointment-
+request action after its private Make endpoint is configured and validated.
 
 This repository contains no passwords, API keys, tokens, customer records, or
 other secret values.
@@ -20,12 +22,15 @@ other secret values.
 7. Telnyx marks plus OpenAI speech-start events support queue clearing and
    conversation truncation when a caller interrupts.
 
-## Phase 1 limits
+## Current limits
 
-- The prompt is intentionally a transport-test prompt, not the final Hal
-  production prompt.
-- No Dispatch, calendar, customer lookup, SMS, scheduling, or transfer tools
-  are connected yet.
+- The Hal prompt is a friendly, down-to-earth receptionist prompt with strict
+  request-only language.
+- The appointment-request tool stays absent from Realtime unless both private
+  Make variables are present. It can submit a request, never book or confirm an
+  appointment.
+- Calendar availability, customer lookup, SMS, scheduling, and transfer tools
+  are not connected.
 - No call recording is enabled.
 - The in-memory webhook duplicate cache is backed by Telnyx command IDs. A
   durable idempotency store should be added before broader production use.
@@ -44,7 +49,14 @@ Required variable names:
 - `TELNYX_API_KEY`
 - `TELNYX_PUBLIC_KEY`
 - `TELNYX_STREAM_AUTH_TOKEN`
+- `MAKE_DISPATCH_WEBHOOK_URL` (optional; must be paired with the auth token)
+- `MAKE_DISPATCH_AUTH_TOKEN` (optional; must be paired with the webhook URL)
+- `MAKE_DISPATCH_TIMEOUT_SECONDS` (default: `8`)
 - `PORT` (provided by Railway)
+
+The gateway sends `MAKE_DISPATCH_AUTH_TOKEN` only in Make's protected
+`x-make-apikey` request header. Never place the value in source control, logs,
+prompts, screenshots, or project documentation.
 
 ## Local validation
 
@@ -80,4 +92,3 @@ Master State.
   https://developers.telnyx.com/docs/voice/programmable-voice/media-streaming
 - Telnyx webhook handling:
   https://developers.telnyx.com/docs/development/api-fundamentals/webhooks/receiving-webhooks
-
