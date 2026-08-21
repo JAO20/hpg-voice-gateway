@@ -112,6 +112,27 @@ class GatewayTests(unittest.TestCase):
         self.assertIn("Do not ask for passwords", instructions)
         self.assertNotIn("tools", event["session"])
 
+    def test_receptionist_prompt_contains_verified_handoff_rules(self):
+        instructions = build_session_update(
+            "gpt-realtime-2.1", "marin", dispatch_enabled=True
+        )["session"]["instructions"]
+        required_rules = (
+            "remote service nationwide",
+            "Onsite service is available only where technician coverage exists",
+            "Windows 10 or older",
+            "liquid damage",
+            "Service Plan",
+            "request-only",
+            "existing request status",
+            "Please don't give me your password or security code",
+            "contact 911",
+            "Confirm you reached the intended person",
+            "Honor \"do not call\"",
+        )
+        for rule in required_rules:
+            with self.subTest(rule=rule):
+                self.assertIn(rule, instructions)
+
     def test_dispatch_tool_is_only_exposed_when_fully_enabled(self):
         event = build_session_update(
             "gpt-realtime-2.1", "marin", dispatch_enabled=True
