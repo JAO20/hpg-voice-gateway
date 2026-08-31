@@ -81,10 +81,18 @@ def validate_appointment_request(payload: Mapping[str, Any]) -> dict[str, Any]:
         if not str(payload.get(field, "")).strip()
     )
     onsite_requested = str(payload.get("onsite_requested", "unknown")).lower()
-    if onsite_requested == "yes" and not str(
-        payload.get("service_location_city", "")
-    ).strip():
-        missing.append("service_location_city")
+    if onsite_requested == "yes":
+        onsite_location_fields = (
+            "service_address",
+            "service_location_city",
+            "service_location_state",
+            "service_location_postal_code",
+        )
+        missing.extend(
+            field
+            for field in onsite_location_fields
+            if not str(payload.get(field, "")).strip()
+        )
     if missing:
         return {
             "valid": False,
@@ -155,7 +163,10 @@ def build_action_envelope(payload: Mapping[str, Any]) -> dict[str, Any]:
         "operating_system",
         "remote_help_acceptable",
         "onsite_requested",
+        "service_address",
         "service_location_city",
+        "service_location_state",
+        "service_location_postal_code",
         "requested_date",
         "requested_time",
         "requested_timezone",
