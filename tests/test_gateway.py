@@ -20,7 +20,11 @@ from src.dispatch_contract import (
     normalize_action_result,
     validate_appointment_request,
 )
-from src.prompt import build_initial_greeting, build_session_update
+from src.prompt import (
+    APPOINTMENT_REQUEST_TOOL,
+    build_initial_greeting,
+    build_session_update,
+)
 from src.realtime_tools import (
     build_function_output_events,
     prepare_appointment_request,
@@ -227,7 +231,22 @@ class GatewayTests(unittest.TestCase):
             }
         )
         self.assertEqual(result["status"], "missing_required_fields")
+        self.assertIn("service_address", result["missing_fields"])
         self.assertIn("service_location_city", result["missing_fields"])
+        self.assertIn("service_location_state", result["missing_fields"])
+        self.assertIn("service_location_postal_code", result["missing_fields"])
+
+    def test_appointment_tool_exposes_complete_contact_and_service_address(self):
+        properties = APPOINTMENT_REQUEST_TOOL["parameters"]["properties"]
+        for field in (
+            "callback_number",
+            "email",
+            "service_address",
+            "service_location_city",
+            "service_location_state",
+            "service_location_postal_code",
+        ):
+            self.assertIn(field, properties)
 
     def test_dispatch_contract_rejects_secret_fields(self):
         result = validate_appointment_request({"caller_name": "Oliver", "password": "never"})
@@ -253,9 +272,15 @@ class GatewayTests(unittest.TestCase):
             {
                 "caller_name": "Oliver",
                 "callback_number": "555-0100",
+                "email": "synthetic@example.com",
                 "service_category": "computer repair",
                 "issue_summary": "Laptop will not start",
                 "device_or_system": "laptop",
+                "onsite_requested": "yes",
+                "service_address": "100 Test Avenue",
+                "service_location_city": "Waco",
+                "service_location_state": "TX",
+                "service_location_postal_code": "76701",
                 "requested_date": "2026-08-25",
                 "requested_time": "10:00",
                 "requested_timezone": "America/Chicago",
@@ -271,9 +296,15 @@ class GatewayTests(unittest.TestCase):
             {
                 "caller_name": "Oliver",
                 "callback_number": "555-0100",
+                "email": "synthetic@example.com",
                 "service_category": "computer repair",
                 "issue_summary": "Laptop will not start",
                 "device_or_system": "laptop",
+                "onsite_requested": "yes",
+                "service_address": "100 Test Avenue",
+                "service_location_city": "Waco",
+                "service_location_state": "TX",
+                "service_location_postal_code": "76701",
                 "requested_date": "2026-08-25",
                 "requested_time": "10:00",
                 "requested_timezone": "America/Chicago",
@@ -285,6 +316,12 @@ class GatewayTests(unittest.TestCase):
         self.assertTrue(clean["valid"])
         self.assertEqual(clean["data"]["action"], ACTION_NAME)
         self.assertTrue(clean["data"]["priority"])
+        self.assertEqual(clean["data"]["callback_number"], "555-0100")
+        self.assertEqual(clean["data"]["email"], "synthetic@example.com")
+        self.assertEqual(clean["data"]["service_address"], "100 Test Avenue")
+        self.assertEqual(clean["data"]["service_location_city"], "Waco")
+        self.assertEqual(clean["data"]["service_location_state"], "TX")
+        self.assertEqual(clean["data"]["service_location_postal_code"], "76701")
         self.assertNotIn("password", clean["data"])
 
     def test_empty_or_unknown_action_results_cannot_sound_successful(self):
